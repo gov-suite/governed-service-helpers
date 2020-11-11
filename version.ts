@@ -47,7 +47,7 @@ export async function determineVersionFromRepoTag(
   // *repoIdentity/vX.Y.Z/* or */vX.Y.Z/* if repoIdentity not supplied
   const repoVersionRegExp = options?.repoIdentity
     ? new RegExp(
-      `${options.repoIdentity}\/v?(?<version>\d+\.\d+\.\d+)\/`,
+      `${options.repoIdentity}/v?(?<version>\\d+\\.\\d+\\.\\d+)/`,
     )
     : /\/v?(?<version>\d+\.\d+\.\d+)\//;
   const matched = url.href.match(repoVersionRegExp);
