@@ -1,4 +1,4 @@
-import { safety } from "./deps.ts";
+import * as safety from "https://denopkg.com/shah/ts-safety@v0.3.0/mod.ts";
 
 /**
  * Health Check Response Format for HTTP APIs (draft-inadarei-api-health-check-01)
@@ -164,12 +164,21 @@ export type ServiceHealthComponentStatus =
   | UnhealthyServiceHealthComponentStatus;
 export type ServiceHealthComponentDetails = ServiceHealthComponentStatus[];
 
+export function defaultLinks(): ServiceHealthLinks {
+  return {
+    "schema":
+      "https://tools.ietf.org/id/draft-inadarei-api-health-check-01.html",
+  };
+}
+
 export function healthyService(
   report: Omit<HealthyServiceStatus, "status">,
 ): HealthyServiceStatus {
+  const links = defaultLinks();
   return {
     status: "pass",
     ...report,
+    links: report.links ? { ...report.links, ...links } : links,
   };
 }
 
@@ -198,9 +207,11 @@ export function unhealthyService(
   status: "fail" | "warn",
   report: Omit<UnhealthyServiceStatus, "status">,
 ): UnhealthyServiceStatus {
+  const links = defaultLinks();
   return {
     status: status,
     ...report,
+    links: report.links ? { ...report.links, ...links } : links,
   };
 }
 

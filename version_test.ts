@@ -1,5 +1,5 @@
-import { testingAsserts as ta } from "./deps-test.ts";
-import * as mod from "./mod.ts";
+import * as ta from "https://deno.land/std@0.77.0/testing/asserts.ts";
+import * as mod from "./version.ts";
 
 Deno.test("remote version without repoIdentity detector", async () => {
   const version = await mod.determineVersionFromRepoTag(

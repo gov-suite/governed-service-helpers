@@ -1,4 +1,6 @@
-import { fs, path, shell } from "./deps.ts";
+import * as fs from "https://deno.land/std@0.77.0/fs/mod.ts";
+import * as path from "https://deno.land/std@0.77.0/path/mod.ts";
+import * as shell from "https://denopkg.com/shah/tsd-shell@v0.9.1/mod.ts";
 
 export interface ModuleVersionSupplier<O> {
   (importMetaURL: URL | string, options?: O): Promise<string>;
