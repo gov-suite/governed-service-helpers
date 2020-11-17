@@ -137,7 +137,7 @@ export class EnvironmentVault implements Vault {
     return new EnvironmentVariable(
       this,
       baseName,
-      { ...options, onUndefined: this.options?.onUndefined },
+      { onUndefined: this.options?.onUndefined, ...options },
     );
   }
 
