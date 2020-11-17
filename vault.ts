@@ -175,9 +175,6 @@ export class EnvironmentVault implements Vault {
   }
 
   reportDefinedAttrs(): void {
-    console.error(
-      "Unable to proceed without valid authentication. Please be sure the following environment variables are set:",
-    );
     const envVars = this.definedAttrs();
     for (const envVar of Object.values(envVars)) {
       const evValue = envVar.value();
