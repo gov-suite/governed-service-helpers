@@ -18,27 +18,51 @@ Deno.test("env var with default", async () => {
 });
 
 Deno.test("env var undefined without default", async () => {
+  let encounteredUndefinedAttr: mod.VaultAttr | undefined;
   const envVars = new mod.EnvironmentVault(
     { commonNamespace: "PREFIX_", secretsNamespace: "PREFIX_SECRET_" },
+    {
+      onUndefined: (attr: mod.VaultAttr) => {
+        encounteredUndefinedAttr = attr;
+      },
+    },
   );
   const serverUser = envVars.defineEnvVar("SERVER_USER");
   ta.assert(serverUser.baseName, "SERVER_USER");
   ta.assert(serverUser.qualifiedName, "PREFIX_SERVER_USER");
   ta.assertStrictEquals(serverUser.value(), undefined);
+  ta.assertStrictEquals(serverUser, encounteredUndefinedAttr);
 
   Deno.env.set("PREFIX_SERVER_USER", "shah");
   ta.assert(serverUser.value(), "shah");
 });
 
 Deno.test("env var undefined secret without default", async () => {
+  let encounteredDuplicateAttr: mod.VaultAttr | undefined;
   const envVars = new mod.EnvironmentVault(
     { commonNamespace: "PREFIX_", secretsNamespace: "PREFIX_SECRET_" },
+    {
+      onDuplicateDefn: (
+        newAttr: mod.VaultAttr,
+        existingAttr: mod.VaultAttr,
+      ): mod.VaultAttr => {
+        encounteredDuplicateAttr = existingAttr;
+        return existingAttr;
+      },
+    },
   );
-  const serverUser = envVars.defineEnvVar("SERVER_PASSWD", { isSecret: true });
-  ta.assert(serverUser.baseName, "SERVER_PASSWD");
-  ta.assert(serverUser.qualifiedName, "PREFIX_SECRET_SERVER_PASSWD");
-  ta.assertStrictEquals(serverUser.value(), undefined);
+  const serverPassword = envVars.defineEnvVar(
+    "SERVER_PASSWD",
+    { isSecret: true },
+  );
+  ta.assert(serverPassword.baseName, "SERVER_PASSWD");
+  ta.assert(serverPassword.qualifiedName, "PREFIX_SECRET_SERVER_PASSWD");
+  ta.assertStrictEquals(serverPassword.value(), undefined);
 
   Deno.env.set("PREFIX_SECRET_SERVER_PASSWD", "*****");
-  ta.assert(serverUser.value(), "*****");
+  ta.assert(serverPassword.value(), "*****");
+
+  // try to define it twice to see if we catch it
+  envVars.defineEnvVar("SERVER_PASSWD", { isSecret: true });
+  ta.assertStrictEquals(serverPassword, encounteredDuplicateAttr);
 });

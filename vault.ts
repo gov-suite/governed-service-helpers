@@ -8,6 +8,7 @@ export interface VaultAttrOptions {
   readonly defaultValue?: unknown | VaultAttr;
   readonly isOptional?: boolean;
   readonly isSecret?: boolean;
+  readonly onUndefined?: (attr: VaultAttr) => unknown;
 }
 
 export interface VaultNamespace {
@@ -78,7 +79,12 @@ export class EnvironmentVariable implements VaultTextAttr {
   value(): string | undefined {
     const value = Deno.env.get(this.qualifiedName);
     if (value) return value;
-    return this.valueFrom(this.options?.defaultValue);
+    if (this.options?.defaultValue) {
+      return this.valueFrom(this.options.defaultValue);
+    }
+    if (this.options?.onUndefined) {
+      return this.valueFrom(this.options.onUndefined(this));
+    }
   }
 
   valueFrom(src: unknown | VaultAttr): string | undefined {
@@ -115,6 +121,7 @@ export class EnvironmentVault implements Vault {
   constructor(
     readonly namespace: VaultNamespace,
     readonly options?: {
+      onUndefined?: (attr: VaultAttr) => unknown;
       onDuplicateDefn?: (
         newAttr: VaultAttr,
         existingAttr: VaultAttr,
@@ -127,7 +134,11 @@ export class EnvironmentVault implements Vault {
     baseName: VaultAttrName,
     options?: VaultAttrOptions,
   ): VaultAttr {
-    return new EnvironmentVariable(this, baseName, options);
+    return new EnvironmentVariable(
+      this,
+      baseName,
+      { ...options, onUndefined: this.options?.onUndefined },
+    );
   }
 
   defineEnvVar(
