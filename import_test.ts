@@ -1,4 +1,4 @@
-import * as ta from "https://deno.land/std@0.77.0/testing/asserts.ts";
+import * as ta from "https://deno.land/std@0.78.0/testing/asserts.ts";
 import * as expected from "./import_test-module-valid.ts";
 import * as mod from "./import.ts";
 
