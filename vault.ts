@@ -1,5 +1,5 @@
 import * as c from "https://deno.land/std@0.78.0/fmt/colors.ts";
-import * as v from "https://denopkg.com/shah/ts-safety@v0.3.0/mod.ts";
+import * as v from "https://denopkg.com/shah/ts-safety@v0.3.1/mod.ts";
 
 export type VaultAttrName = string;
 export type VaultAttrQualifiedName = string;
