@@ -1,5 +1,5 @@
 import * as colors from "https://deno.land/std@0.78.0/fmt/colors.ts";
-import * as oak from "https://deno.land/x/oak@v6.3.2/mod.ts";
+import * as oak from "https://deno.land/x/oak@v6.4.0/mod.ts";
 import * as health from "./health.ts";
 
 // TODO: add https://github.com/marcopacini/ts-prometheus based /metrics route
