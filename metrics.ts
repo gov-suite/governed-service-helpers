@@ -21,7 +21,7 @@ export type TypedObject = object;
 
 export interface MetricLabels<T extends TypedObject> {
   readonly object: T;
-  readonly stringify: () => string;
+  readonly stringify: (options: MetricsDialect) => string;
 }
 
 export function isMetricLabels<T extends TypedObject>(
@@ -42,12 +42,26 @@ export function openMetricsLabels<T extends TypedObject>(
     stringify: () => {
       const kvPairs: string[] = [];
       for (const entry of Object.entries(values)) {
-        if (
-          typeof entry[1] === "undefined" && options.skipUndefinedLabels
-        ) {
-          continue;
+        const [name, value] = entry;
+        switch (typeof value) {
+          case "number":
+            kvPairs.push(`${name}="${value}"`);
+            break;
+
+          case "function":
+            // utility functions should be skipped
+            continue;
+
+          case "undefined":
+            if (!options.skipUndefinedLabels) {
+              kvPairs.push(`${name}=""`);
+            }
+            break;
+
+          default:
+            // strings, dates, etc.
+            kvPairs.push(`${name}=${JSON.stringify(value)}`);
         }
-        kvPairs.push(`${entry[0]}=${JSON.stringify(entry[1])}`);
       }
       return kvPairs.join(", ");
     },
@@ -61,8 +75,8 @@ export interface LabeledMetricInstance<M extends Metric, T extends TypedObject>
 
 export interface InfoMetric<T extends TypedObject> extends Metric {
   readonly instance: (
-    values: T | MetricLabels<T>,
-  ) => LabeledMetricInstance<Metric, T>;
+    labelValues: T | MetricLabels<T>,
+  ) => LabeledMetricInstance<InfoMetric<T>, T>;
 }
 
 export function infoMetric<T extends TypedObject>(
@@ -72,15 +86,64 @@ export function infoMetric<T extends TypedObject>(
   const metric: InfoMetric<T> = {
     name: `${name}_info`,
     help,
-    instance: (values) => {
-      const instanceLabels = isMetricLabels<T>(values)
-        ? values
-        : openMetricsLabels(values);
-      const instance: LabeledMetricInstance<Metric, T> = {
+    instance: (labelValues) => {
+      const instanceLabels = isMetricLabels<T>(labelValues)
+        ? labelValues
+        : openMetricsLabels(labelValues);
+      const instance: LabeledMetricInstance<InfoMetric<T>, T> = {
         metric,
         labels: instanceLabels,
         stringify: (options: MetricsDialect): string => {
-          return `${instance.metric.name}{${instanceLabels.stringify()}} 1`;
+          return `${instance.metric.name}{${
+            instanceLabels.stringify(options)
+          }} 1`;
+        },
+      };
+      return instance;
+    },
+    declare: (dest: string[], options: MetricsDialect): void => {
+      dest.push(`# HELP ${metric.name} ${metric.help}`);
+      dest.push(`# TYPE ${metric.name} gauge`);
+    },
+  };
+  return metric;
+}
+
+export interface GaugeMetricInstance<T extends TypedObject>
+  extends LabeledMetricInstance<GaugeMetric<T>, T> {
+  readonly value: (set?: number) => number;
+}
+
+export interface GaugeMetric<T extends TypedObject> extends Metric {
+  readonly instance: (
+    metricValue: number,
+    labelValues: T | MetricLabels<T>,
+  ) => GaugeMetricInstance<T>;
+}
+
+export function gaugeMetric<T extends TypedObject>(
+  name: MetricName,
+  help: string,
+): GaugeMetric<T> {
+  const metric: GaugeMetric<T> = {
+    name,
+    help,
+    instance: (metricValue, labelValues) => {
+      let value = metricValue;
+      const instanceLabels = isMetricLabels<T>(labelValues)
+        ? labelValues
+        : openMetricsLabels(labelValues);
+      const instance: GaugeMetricInstance<T> = {
+        metric,
+        labels: instanceLabels,
+        value: (set?: number): number => {
+          if (set) value = set;
+          return value;
+        },
+        stringify: (options: MetricsDialect): string => {
+          return `${instance.metric.name}{${
+            instanceLabels.stringify(options)
+          }} ${value}`;
         },
       };
       return instance;
@@ -94,40 +157,44 @@ export function infoMetric<T extends TypedObject>(
 }
 
 export interface Metrics {
+  readonly instances: MetricInstance<Metric>[];
   readonly infoMetric: <T extends TypedObject>(
     name: MetricName,
     help: string,
   ) => InfoMetric<T>;
+  readonly gaugeMetric: <T extends TypedObject>(
+    name: MetricName,
+    help: string,
+  ) => GaugeMetric<T>;
 }
 
 export interface MetricsDialect {
-  readonly dialect: "open-metrics" | "prometheus";
+  export(instances: MetricInstance<Metric>[]): string[];
 }
 
 export function prometheusDialect(): MetricsDialect {
-  return {
-    dialect: "prometheus",
+  const dialect: MetricsDialect = {
+    export: (instances: MetricInstance<Metric>[]) => {
+      const encounteredMetrics = new Map<MetricLabelName, boolean>();
+      const result: string[] = [];
+      for (const instance of instances) {
+        const encountered = encounteredMetrics.get(instance.metric.name);
+        if (!encountered) {
+          instance.metric.declare(result, dialect);
+          encounteredMetrics.set(instance.metric.name, true);
+        }
+        result.push(instance.stringify(dialect));
+      }
+      return result;
+    },
   };
+  return dialect;
 }
 
 export class TypicalMetrics implements Metrics {
   readonly instances: MetricInstance<Metric>[] = [];
 
   constructor(readonly namePrefix?: string) {
-  }
-
-  export(dialect: MetricsDialect): string[] {
-    const encounteredMetrics = new Map<MetricLabelName, boolean>();
-    const result: string[] = [];
-    for (const instance of this.instances) {
-      const encountered = encounteredMetrics.get(instance.metric.name);
-      if (!encountered) {
-        instance.metric.declare(result, dialect);
-        encounteredMetrics.set(instance.metric.name, true);
-      }
-      result.push(instance.stringify(dialect));
-    }
-    return result;
   }
 
   infoMetric<T extends TypedObject>(
@@ -140,25 +207,23 @@ export class TypicalMetrics implements Metrics {
     );
   }
 
-  record(instance: MetricInstance<Metric>): void {
+  gaugeMetric<T extends TypedObject>(
+    name: MetricName,
+    help: string,
+  ): GaugeMetric<T> {
+    return gaugeMetric(
+      this.namePrefix ? `${this.namePrefix}${name}` : name,
+      help,
+    );
+  }
+
+  record(instance: MetricInstance<Metric>): MetricInstance<Metric> {
     this.instances.push(instance);
+    return instance;
   }
 
-  async persist(
-    fileName: string,
-    dialect: MetricsDialect & { readonly append: boolean },
-  ): Promise<void> {
-    await Deno.writeTextFile(fileName, this.export(dialect).join("\n"), {
-      append: dialect.append,
-    });
-  }
-
-  persistSync(
-    fileName: string,
-    dialect: MetricsDialect & { readonly append: boolean },
-  ): void {
-    Deno.writeTextFileSync(fileName, this.export(dialect).join("\n"), {
-      append: dialect.append,
-    });
+  merge(metrics: Metrics): Metrics {
+    this.instances.push(...metrics.instances);
+    return this;
   }
 }
