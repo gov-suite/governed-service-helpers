@@ -1,7 +1,7 @@
 import * as ta from "https://deno.land/std@0.86.0/testing/asserts.ts";
 import * as mod from "./vault.ts";
 
-Deno.test("env var with default", async () => {
+Deno.test("env var with default", () => {
   const envVars = new mod.EnvironmentVault(
     { commonNamespace: "PREFIX_", secretsNamespace: "PREFIX_SECRET_" },
   );
@@ -17,7 +17,7 @@ Deno.test("env var with default", async () => {
   ta.assert(serverHost.value(), "updated.domain.com");
 });
 
-Deno.test("env var undefined without default", async () => {
+Deno.test("env var undefined without default", () => {
   let encounteredUndefinedAttr: mod.VaultAttr | undefined;
   const envVars = new mod.EnvironmentVault(
     { commonNamespace: "PREFIX_", secretsNamespace: "PREFIX_SECRET_" },
@@ -37,7 +37,7 @@ Deno.test("env var undefined without default", async () => {
   ta.assert(serverUser.value(), "shah");
 });
 
-Deno.test("env var undefined secret without default", async () => {
+Deno.test("env var undefined secret without default", () => {
   let encounteredDuplicateAttr: mod.VaultAttr | undefined;
   const envVars = new mod.EnvironmentVault(
     { commonNamespace: "PREFIX_", secretsNamespace: "PREFIX_SECRET_" },
