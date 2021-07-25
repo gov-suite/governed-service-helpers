@@ -1,4 +1,4 @@
-import * as ta from "https://deno.land/std@0.86.0/testing/asserts.ts";
+import * as ta from "https://deno.land/std@0.102.0/testing/asserts.ts";
 import * as expected from "./import_test-module-valid.ts";
 import * as mod from "./import.ts";
 
@@ -25,7 +25,7 @@ Deno.test("erroneous import of unchecked import_test-module-valid.ts", async () 
   ta.assert(reportedDiag);
   ta.assertStringIncludes(
     reportedDiag,
-    `Unable to import module import_test-module-valid.ts: TypeError: relative import path "import_test-module-valid.ts" not prefixed with / or ./ or ../`,
+    `Unable to import module import_test-module-valid.ts: TypeError: Relative import path "import_test-module-valid.ts" not prefixed with / or ./ or ../`,
   );
 });
 

@@ -1,4 +1,4 @@
-import * as safety from "https://denopkg.com/shah/ts-safety@v0.3.1/mod.ts";
+import * as safety from "https://denopkg.com/shah/ts-safety@v1.0.0/mod.ts";
 
 /**
  * Health Check Response Format for HTTP APIs (draft-inadarei-api-health-check-01)
@@ -10,7 +10,7 @@ import * as safety from "https://denopkg.com/shah/ts-safety@v0.3.1/mod.ts";
   *   “pass”: healthy,
   *   “fail”: unhealthy, and
   *   “warn”: healthy, with some concerns.
-  * The value of the status field is tightly related with the HTTP response code returned by the health endpoint. For “pass” and “warn” statuses 
+  * The value of the status field is tightly related with the HTTP response code returned by the health endpoint. For “pass” and “warn” statuses
   * HTTP response code in the 2xx-3xx range MUST be used. For “fail” status HTTP response code in the 4xx-5xx range MUST be used. In case of the
   * “warn” status, endpoint SHOULD return HTTP status in the 2xx-3xx range and additional information SHOULD be provided, utilizing optional
   * fields of the response.
@@ -163,6 +163,14 @@ export type ServiceHealthComponentStatus =
   | HealthyServiceHealthComponentStatus
   | UnhealthyServiceHealthComponentStatus;
 export type ServiceHealthComponentDetails = ServiceHealthComponentStatus[];
+
+export interface ServiceHealthSupplier {
+  readonly serviceHealth: ServiceHealthComponents;
+}
+
+export const isServiceHealthSupplier = safety.typeGuard<ServiceHealthSupplier>(
+  "serviceHealth",
+);
 
 export function defaultLinks(): ServiceHealthLinks {
   return {

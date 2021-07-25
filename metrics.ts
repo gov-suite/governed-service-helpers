@@ -1,4 +1,4 @@
-import * as safety from "https://denopkg.com/shah/ts-safety@v0.3.1/mod.ts";
+import * as safety from "https://denopkg.com/shah/ts-safety@v1.0.0/mod.ts";
 
 export type MetricName = string;
 export type MetricDescription = string;
