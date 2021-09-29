@@ -134,31 +134,34 @@ export class FileSysAssetsTree
       this.populate(
         { terminal },
         { walker, destination },
-        (unrefined) => {
-          // gt.GovernedTree.register will create a generic, "unrefined" and
-          // untyped node; we want to "refine" or transform the node from a
-          // generic to a FileSysAssetNode so that all nodes are typesafe.
-          const transformed: FileSysAssetNode = {
-            ...unrefined,
-            walker,
-            parent: unrefined.parent as FileSysAssetNode,
-            children: unrefined.children as FileSysAssetNode[],
-            ancestors: unrefined.ancestors as FileSysAssetNode[],
-            descendants: () =>
-              this.descendants(transformed) as Generator<FileSysAssetNode>,
-            select: (query, noMatch) =>
-              this.selectTreeNode(
-                unrefined,
-                query,
-                noMatch,
-              ) as FileSysAssetNode,
-            fileInfo: async () => await Deno.stat(terminal.path),
-            fileInfoSync: () => Deno.statSync(terminal.path),
-            subdirectories: (maxLevel) =>
-              fileSysAssetsNodeSubdirectories(transformed, maxLevel),
-            files: (maxLevel) => fileSysAssetsNodeFiles(transformed, maxLevel),
-          };
-          return transformed;
+        {
+          refineConstructed: (unrefined) => {
+            // gt.GovernedTree.register will create a generic, "unrefined" and
+            // untyped node; we want to "refine" or transform the node from a
+            // generic to a FileSysAssetNode so that all nodes are typesafe.
+            const transformed: FileSysAssetNode = {
+              ...unrefined,
+              walker,
+              parent: unrefined.parent as FileSysAssetNode,
+              children: unrefined.children as FileSysAssetNode[],
+              ancestors: unrefined.ancestors as FileSysAssetNode[],
+              descendants: () =>
+                this.descendants(transformed) as Generator<FileSysAssetNode>,
+              select: (query, noMatch) =>
+                this.selectTreeNode(
+                  unrefined,
+                  query,
+                  noMatch,
+                ) as FileSysAssetNode,
+              fileInfo: async () => await Deno.stat(terminal.path),
+              fileInfoSync: () => Deno.statSync(terminal.path),
+              subdirectories: (maxLevel) =>
+                fileSysAssetsNodeSubdirectories(transformed, maxLevel),
+              files: (maxLevel) =>
+                fileSysAssetsNodeFiles(transformed, maxLevel),
+            };
+            return transformed;
+          },
         },
       );
     }

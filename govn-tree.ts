@@ -38,11 +38,22 @@ export interface GovnTreeRegistrationContext<Terminal> {
   readonly destination: Pick<GovnTreeNodesSupplier<Terminal>, "children">;
 }
 
+export interface GovernedTreeNodeExists<Terminal> {
+  (
+    prospect: string,
+    siblings: GovnTreeNode<Terminal>[],
+    ts: GovnTreeTerminalSupplier<Terminal>,
+  ): GovnTreeNode<Terminal> | undefined;
+}
+
 export abstract class GovernedTree<
   Terminal,
   RegistrationContext extends GovnTreeRegistrationContext<Terminal>,
 > {
-  constructor(readonly pathSep = "/") {
+  constructor(
+    readonly pathSep = "/",
+    readonly nodeExists?: GovernedTreeNodeExists<Terminal>,
+  ) {
   }
 
   abstract units(
@@ -84,12 +95,17 @@ export abstract class GovernedTree<
   populate(
     ts: GovnTreeTerminalSupplier<Terminal>,
     rc: RegistrationContext,
-    refineConstructed?: (
-      suggested: GovnTreeNode<Terminal>,
-      ts: GovnTreeTerminalSupplier<Terminal>,
-      rc: RegistrationContext,
-    ) => GovnTreeNode<Terminal>,
+    options?: {
+      readonly nodeExists?: GovernedTreeNodeExists<Terminal>;
+      readonly refineConstructed?: (
+        suggested: GovnTreeNode<Terminal>,
+        ts: GovnTreeTerminalSupplier<Terminal>,
+        rc: RegistrationContext,
+      ) => GovnTreeNode<Terminal>;
+    },
   ): GovnTreeNode<Terminal> | undefined {
+    const nodeExists = options?.nodeExists || this.nodeExists ||
+      ((prospect, siblings) => siblings.find((cn) => cn.unit == prospect));
     const units = this.units(ts, rc);
     const terminalIndex = units.length - 1;
 
@@ -108,7 +124,7 @@ export abstract class GovernedTree<
     ) => {
       // the first ancestor is the parent, second is grandparent, etc.
       const unit = units[level];
-      let result = collection.find((p) => p.unit == unit);
+      let result = nodeExists(unit, collection, ts);
       if (!result) {
         const isTerminal = level == terminalIndex;
         const parent = ancestors.length > 0 ? ancestors[0] : undefined;
@@ -132,8 +148,8 @@ export abstract class GovernedTree<
           select: (query, noMatch) =>
             this.selectTreeNode(result!, query, noMatch),
         };
-        if (refineConstructed) {
-          result = refineConstructed(result, ts, rc);
+        if (options?.refineConstructed) {
+          result = options?.refineConstructed(result, ts, rc);
         }
         collection.push(result);
       }
